@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
+	"github.com/RHEcosystemAppEng/provider-operator-example/controllers/dbaas/testutil"
 
 	"k8s.io/client-go/kubernetes"
 	"os"
@@ -110,9 +111,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&dbaascontrollers.ProviderInventoryReconciler{
+	fakeService := &testutil.FakeProviderService{
 		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+	}
+
+	if err = (&dbaascontrollers.ProviderInventoryReconciler{
+		DBaaSProviderService: fakeService,
+		Scheme:               mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProviderInventory")
 		os.Exit(1)

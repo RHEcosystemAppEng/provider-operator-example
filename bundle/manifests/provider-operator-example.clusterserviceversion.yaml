@@ -239,6 +239,7 @@ spec:
                 - name: SYNC_PERIOD_MIN
                   value: "180"
                 image: quay.io/ahameed/provider-example-operator:v0.0.1
+                imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
                     path: /healthz

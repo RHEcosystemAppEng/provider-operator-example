@@ -18,17 +18,25 @@ package dbaas
 
 import (
 	"context"
+	"fmt"
 	"github.com/RHEcosystemAppEng/provider-operator-example/apis/dbaas/v1beta1"
+	"github.com/RHEcosystemAppEng/provider-operator-example/controllers/dbaas/testutil"
+	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 )
 
 // ProviderInventoryReconciler reconciles a ProviderInventory object
 type ProviderInventoryReconciler struct {
-	client.Client
+	testutil.DBaaSProviderService
 	Scheme *runtime.Scheme
 }
 
@@ -46,11 +54,106 @@ type ProviderInventoryReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 func (r *ProviderInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx, "ProviderDBaaSInventory", req.NamespacedName)
 
-	// TODO(user): your logic here
+	var inventory v1beta1.ProviderInventory
+	if err := r.Get(ctx, req.NamespacedName, &inventory); err != nil {
+		if apierrors.IsNotFound(err) {
+			// CR deleted since request queued, child objects getting GC'd, no requeue
+			logger.Info("ProviderInventory resource not found, may have been deleted")
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "Failed to fetch ProviderInventory for reconcile")
+		return ctrl.Result{}, err
+	}
+
+	logger.Info("Creating API client for ProviderInventory cloud to get list of cloud clusters/database")
+	secretSelector := client.ObjectKey{
+		Namespace: inventory.Namespace,
+		Name:      inventory.Spec.CredentialsRef.Name,
+	}
+	cloudService, err := r.CreateCloudService(ctx, secretSelector)
+	if err != nil {
+		if _, errUpdate := r.updateInventoryStatus(ctx, inventory, metav1.ConditionFalse, InputError, string(InputError), logger, nil); errUpdate != nil {
+			logger.Error(errUpdate, "Failed to update Inventory status")
+		}
+		logger.Error(err, "Failed to create CloudClient")
+		return ctrl.Result{}, err
+	}
+	logger.Info("Created CloudClient for provider cloud")
+	logger.Info("Discovering clusters from provider cloud")
+
+	instanceLst, err := r.DiscoverClusters(ctx, cloudService)
+	if err != nil {
+		if _, errUpdate := r.updateInventoryStatus(ctx, inventory, metav1.ConditionFalse, BackendError, string(BackendError), logger, nil); errUpdate != nil {
+			logger.Error(errUpdate, "Failed to update Inventory status")
+		}
+		logger.Error(err, "Failed to discover Clusters")
+		return ctrl.Result{}, err
+	}
+	logger.Info("Sync Instances of the Inventory")
+	inventory.Status.DatabaseServices = instanceLst
+	if requeue, err := r.updateInventoryStatus(ctx, inventory, metav1.ConditionTrue, InventorySyncOK, string(InventorySyncOK), logger, nil); err != nil {
+		logger.Error(err, "Failed to update Inventory status")
+		return ctrl.Result{}, err
+	} else if requeue {
+		return ctrl.Result{Requeue: true}, nil
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ProviderInventoryReconciler) updateInventoryStatus(ctx context.Context, inventory v1beta1.ProviderInventory,
+	status metav1.ConditionStatus, reason ConditionReason, reasonMsg string, logger logr.Logger, condErrMsg *ConditionErrorMessage) (bool, error) {
+
+	if condErrMsg != nil && condErrMsg.IsError() {
+		reason, reasonMsg = condErrMsg.ConditionReason()
+	}
+	curCondition := metav1.Condition{
+		Type:    inventoryConditionTypeReady,
+		Status:  status,
+		Reason:  string(reason),
+		Message: reasonMsg}
+
+	apimeta.SetStatusCondition(&inventory.Status.Conditions, curCondition)
+	if err := r.Status().Update(ctx, &inventory); err != nil {
+		if apierrors.IsConflict(err) {
+			logger.Info("Inventory modified, retry reconciling")
+			return true, nil
+		}
+		logger.Error(err, fmt.Sprintf("Could not update Inventory status:%v", inventory.Name))
+		return false, err
+	}
+	return false, nil
+}
+
+type ConditionReason string
+
+const (
+	InputError          ConditionReason = "InputError"
+	BackendError        ConditionReason = "BackendError"
+	EndpointUnreachable ConditionReason = "EndpointUnreachable"
+	AuthenticationError ConditionReason = "AuthenticationError"
+)
+
+type ConditionErrorMessage struct {
+	*testutil.APIErrorMessage
+}
+
+func (a ConditionErrorMessage) IsError() bool {
+	return a.APIErrorMessage != nil
+}
+
+func (a ConditionErrorMessage) ConditionReason() (ConditionReason, string) {
+	if a.HttpCode == http.StatusBadRequest || a.HttpCode == http.StatusNotFound {
+		return InputError, a.String()
+	} else if a.HttpCode == http.StatusUnauthorized || a.HttpCode == http.StatusForbidden {
+		return AuthenticationError, a.String()
+	} else if a.HttpCode == http.StatusBadGateway || a.HttpCode == http.StatusServiceUnavailable {
+		return EndpointUnreachable, a.String()
+	}
+	//e.g.:500
+	return BackendError, a.String()
 }
 
 // SetupWithManager sets up the controller with the Manager.
