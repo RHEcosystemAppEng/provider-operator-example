@@ -4,7 +4,7 @@ The GitHub repository provides a operator example for integrating database provi
 # Create your Operator 
 
 ``` 
-operator-sdk init --domain provider.com --repo github.com/RHEcosystemAppEng/provider-operator-example.git
+operator-sdk init --domain redhat.com --repo github.com/RHEcosystemAppEng/provider-operator-example.git
 
 operator-sdk edit --multigroup=true
 
@@ -24,8 +24,8 @@ In your go.mod and added spec status in `providerconnection_types.go`
 
 ## Build the Operator 
 
-run the commands to build operator, bundle,catalog and push on quay.io
-
+run the commands to build operator, bundle,catalog and push on quay.io or other registry, make sure to change the access as a public  
+``` 
 make docker-build
 make docker-push
 make bundle
@@ -33,7 +33,7 @@ make bundle-build
 make bundle-push
 make catalog-build
 make catalog-push
-
+```
 
 ## Add Provider Registration controller and cr details to register with DBaaS Operator
 

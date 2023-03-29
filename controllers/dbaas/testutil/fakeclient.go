@@ -12,7 +12,6 @@ import (
 func NewFakeAPIClient() *FakeAPIClient {
 	client := &FakeAPIClient{
 		FakeClusters: fakeClusters,
-		FakeSQLUsers: fakeUsers,
 	}
 	return client
 }
@@ -64,11 +63,9 @@ var (
 )
 
 var fakeClusters = NewFakeClusters()
-var fakeUsers = NewFakeUsers()
 
 type FakeAPIClient struct {
 	*FakeClusters
-	*FakeSQLUsers
 }
 
 type FakeClusters struct {
@@ -77,13 +74,6 @@ type FakeClusters struct {
 	deleteCluster chan string
 	clusters      *ListClustersResponse
 	clusterMutex  *sync.Mutex
-}
-
-type FakeSQLUsers struct {
-	addUser    chan SQLUser
-	deleteUser chan string
-	users      *ListSQLUsersResponse
-	userMutex  *sync.Mutex
 }
 
 type Cluster struct {
@@ -155,50 +145,6 @@ func NewFakeClusters() *FakeClusters {
 	return clusters
 }
 
-func NewFakeUsers() *FakeSQLUsers {
-	users := &FakeSQLUsers{
-		addUser:    make(chan SQLUser, 5),
-		deleteUser: make(chan string, 5),
-		userMutex:  &sync.Mutex{},
-		users:      &ListSQLUsersResponse{},
-	}
-
-	go func() {
-		for c := range users.addUser {
-			users.userMutex.Lock()
-			users.users.Users = append(users.users.Users, c)
-			users.userMutex.Unlock()
-		}
-	}()
-
-	go func() {
-		for name := range users.deleteUser {
-			users.userMutex.Lock()
-			for i, c := range users.users.Users {
-				if c.Name == name {
-					users.users.Users[i] = users.users.Users[len(users.users.Users)-1]
-					users.users.Users = users.users.Users[:len(users.users.Users)-1]
-					break
-				}
-			}
-			users.userMutex.Unlock()
-		}
-	}()
-
-	return users
-}
-
-type SQLUser struct {
-	Name                 string `json:"name"`
-	AdditionalProperties map[string]interface{}
-}
-
-// ListSQLUsersResponse struct for ListSQLUsersResponse.
-type ListSQLUsersResponse struct {
-	Users                []SQLUser `json:"users"`
-	AdditionalProperties map[string]interface{}
-}
-
 func (f FakeAPIClient) ListClusters(ctx context.Context) (*ListClustersResponse, *http.Response, error) {
 	f.clusterMutex.Lock()
 	clusters := f.clusters
@@ -235,9 +181,8 @@ type ApiCloudProvider string
 
 // List of api.CloudProvider.
 const (
-	APICLOUDPROVIDER_CLOUD_PROVIDER_UNSPECIFIED ApiCloudProvider = "CLOUD_PROVIDER_UNSPECIFIED"
-	APICLOUDPROVIDER_GCP                        ApiCloudProvider = "GCP"
-	APICLOUDPROVIDER_AWS                        ApiCloudProvider = "AWS"
+	APICLOUDPROVIDER_GCP ApiCloudProvider = "GCP"
+	APICLOUDPROVIDER_AWS ApiCloudProvider = "AWS"
 )
 
 // ClusterStateType  - LOCKED: An exclusive operation is being performed on this cluster. Other operations should not proceed if they did not set a cluster into the LOCKED state.
@@ -245,38 +190,11 @@ type ClusterStateType string
 
 // List of ClusterStateType.
 const (
-	CLUSTERSTATETYPE_CLUSTER_STATE_UNSPECIFIED ClusterStateType = "CLUSTER_STATE_UNSPECIFIED"
-	CLUSTERSTATETYPE_CREATING                  ClusterStateType = "CREATING"
-	CLUSTERSTATETYPE_CREATED                   ClusterStateType = "CREATED"
-	CLUSTERSTATETYPE_CREATION_FAILED           ClusterStateType = "CREATION_FAILED"
-	CLUSTERSTATETYPE_DELETED                   ClusterStateType = "DELETED"
-	CLUSTERSTATETYPE_LOCKED                    ClusterStateType = "LOCKED"
+	CLUSTERSTATETYPE_CREATED ClusterStateType = "CREATED"
 )
 
 // ClusterStatusType the model 'ClusterStatusType'.
 type ClusterStatusType string
-
-// List of ClusterStatusType.
-const (
-	CLUSTERSTATUSTYPE_CLUSTER_STATUS_UNSPECIFIED       ClusterStatusType = "CLUSTER_STATUS_UNSPECIFIED"
-	CLUSTERSTATUSTYPE_provider_MAJOR_UPGRADE_RUNNING   ClusterStatusType = "provider_MAJOR_UPGRADE_RUNNING"
-	CLUSTERSTATUSTYPE_provider_MAJOR_UPGRADE_FAILED    ClusterStatusType = "provider_MAJOR_UPGRADE_FAILED"
-	CLUSTERSTATUSTYPE_provider_MAJOR_ROLLBACK_RUNNING  ClusterStatusType = "provider_MAJOR_ROLLBACK_RUNNING"
-	CLUSTERSTATUSTYPE_provider_MAJOR_ROLLBACK_FAILED   ClusterStatusType = "provider_MAJOR_ROLLBACK_FAILED"
-	CLUSTERSTATUSTYPE_provider_PATCH_RUNNING           ClusterStatusType = "provider_PATCH_RUNNING"
-	CLUSTERSTATUSTYPE_provider_PATCH_FAILED            ClusterStatusType = "provider_PATCH_FAILED"
-	CLUSTERSTATUSTYPE_provider_SCALE_RUNNING           ClusterStatusType = "provider_SCALE_RUNNING"
-	CLUSTERSTATUSTYPE_provider_SCALE_FAILED            ClusterStatusType = "provider_SCALE_FAILED"
-	CLUSTERSTATUSTYPE_MAINTENANCE_RUNNING              ClusterStatusType = "MAINTENANCE_RUNNING"
-	CLUSTERSTATUSTYPE_provider_INSTANCE_UPDATE_RUNNING ClusterStatusType = "provider_INSTANCE_UPDATE_RUNNING"
-	CLUSTERSTATUSTYPE_provider_INSTANCE_UPDATE_FAILED  ClusterStatusType = "provider_INSTANCE_UPDATE_FAILED"
-	CLUSTERSTATUSTYPE_provider_EDIT_CLUSTER_RUNNING    ClusterStatusType = "provider_EDIT_CLUSTER_RUNNING"
-	CLUSTERSTATUSTYPE_provider_EDIT_CLUSTER_FAILED     ClusterStatusType = "provider_EDIT_CLUSTER_FAILED"
-	CLUSTERSTATUSTYPE_provider_CMEK_OPERATION_RUNNING  ClusterStatusType = "provider_CMEK_OPERATION_RUNNING"
-	CLUSTERSTATUSTYPE_provider_CMEK_OPERATION_FAILED   ClusterStatusType = "provider_CMEK_OPERATION_FAILED"
-	CLUSTERSTATUSTYPE_TENANT_RESTORE_RUNNING           ClusterStatusType = "TENANT_RESTORE_RUNNING"
-	CLUSTERSTATUSTYPE_TENANT_RESTORE_FAILED            ClusterStatusType = "TENANT_RESTORE_FAILED"
-)
 
 // Region struct for Region.
 type Region struct {

@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type ConditionReason string
+
 const (
 	// DefaultRetryDelay applies to situations where we want to wait for certain time for some resources to be available
 	DefaultRetryDelay      = time.Second * 5
@@ -13,16 +15,20 @@ const (
 	InstallNamespaceEnvVar = "INSTALL_NAMESPACE"
 	instanceFinalizer      = "providerdbaasinstance.dbaas.redhat.com/cluster"
 
-	databaseType     = "postgresql"
+	databaseType     = "providerdb"
 	databaseProvider = "provider Cloud"
-	databasePort     = "26257"
-	databaseName     = "defaultdb"
-	databaseSSLMode  = "verify-full"
+	databasehost     = "postgres://username:password@hostname:port/database_name"
+
+	databasePort    = "26257"
+	databaseName    = "defaultdb"
+	databaseSSLMode = "verify-full"
 
 	inventoryConditionTypeReady  string = "SpecSynced"
 	connectionConditionReadyType string = "ReadyForBinding"
 	instanceConditionReadyType   string = "ProvisionReady"
 	providerConditionReadyType   string = "ProviderReady"
+
+	SuccessConnection string = "Successfully retrieved the connection detail\n"
 
 	InstanceCreating          ConditionReason = "Creating"
 	InstanceCreationFailed    ConditionReason = "CreationFailed"
@@ -34,6 +40,11 @@ const (
 	ConnectionNotReady        ConditionReason = "ConnectionNotReady"
 	ProviderReady             ConditionReason = "Ready"
 	ProviderProcessingPending ConditionReason = "ProcessingPending"
+
+	InputError          ConditionReason = "InputError"
+	BackendError        ConditionReason = "BackendError"
+	EndpointUnreachable ConditionReason = "EndpointUnreachable"
+	AuthenticationError ConditionReason = "AuthenticationError"
 )
 
 // GetSyncPeriod get the sync period for next reconciliation

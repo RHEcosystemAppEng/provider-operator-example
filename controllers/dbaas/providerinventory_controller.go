@@ -22,10 +22,8 @@ import (
 	"github.com/RHEcosystemAppEng/provider-operator-example/apis/dbaas/v1beta1"
 	"github.com/RHEcosystemAppEng/provider-operator-example/controllers/dbaas/testutil"
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,7 +72,7 @@ func (r *ProviderInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 	cloudService, err := r.CreateCloudService(ctx, secretSelector)
 	if err != nil {
-		if _, errUpdate := r.updateInventoryStatus(ctx, inventory, metav1.ConditionFalse, InputError, string(InputError), logger, nil); errUpdate != nil {
+		if errUpdate := r.updateInventoryStatus(ctx, inventory, metav1.ConditionFalse, InputError, string(InputError), logger); errUpdate != nil {
 			logger.Error(errUpdate, "Failed to update Inventory status")
 		}
 		logger.Error(err, "Failed to create CloudClient")
@@ -85,7 +83,7 @@ func (r *ProviderInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	instanceLst, err := r.DiscoverClusters(ctx, cloudService)
 	if err != nil {
-		if _, errUpdate := r.updateInventoryStatus(ctx, inventory, metav1.ConditionFalse, BackendError, string(BackendError), logger, nil); errUpdate != nil {
+		if errUpdate := r.updateInventoryStatus(ctx, inventory, metav1.ConditionFalse, BackendError, string(BackendError), logger); errUpdate != nil {
 			logger.Error(errUpdate, "Failed to update Inventory status")
 		}
 		logger.Error(err, "Failed to discover Clusters")
@@ -93,22 +91,16 @@ func (r *ProviderInventoryReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 	logger.Info("Sync Instances of the Inventory")
 	inventory.Status.DatabaseServices = instanceLst
-	if requeue, err := r.updateInventoryStatus(ctx, inventory, metav1.ConditionTrue, InventorySyncOK, string(InventorySyncOK), logger, nil); err != nil {
+	if err := r.updateInventoryStatus(ctx, inventory, metav1.ConditionTrue, InventorySyncOK, string(InventorySyncOK), logger); err != nil {
 		logger.Error(err, "Failed to update Inventory status")
 		return ctrl.Result{}, err
-	} else if requeue {
-		return ctrl.Result{Requeue: true}, nil
 	}
-
 	return ctrl.Result{}, nil
 }
 
 func (r *ProviderInventoryReconciler) updateInventoryStatus(ctx context.Context, inventory v1beta1.ProviderInventory,
-	status metav1.ConditionStatus, reason ConditionReason, reasonMsg string, logger logr.Logger, condErrMsg *ConditionErrorMessage) (bool, error) {
+	status metav1.ConditionStatus, reason ConditionReason, reasonMsg string, logger logr.Logger) error {
 
-	if condErrMsg != nil && condErrMsg.IsError() {
-		reason, reasonMsg = condErrMsg.ConditionReason()
-	}
 	curCondition := metav1.Condition{
 		Type:    inventoryConditionTypeReady,
 		Status:  status,
@@ -119,41 +111,12 @@ func (r *ProviderInventoryReconciler) updateInventoryStatus(ctx context.Context,
 	if err := r.Status().Update(ctx, &inventory); err != nil {
 		if apierrors.IsConflict(err) {
 			logger.Info("Inventory modified, retry reconciling")
-			return true, nil
+			return nil
 		}
 		logger.Error(err, fmt.Sprintf("Could not update Inventory status:%v", inventory.Name))
-		return false, err
+		return err
 	}
-	return false, nil
-}
-
-type ConditionReason string
-
-const (
-	InputError          ConditionReason = "InputError"
-	BackendError        ConditionReason = "BackendError"
-	EndpointUnreachable ConditionReason = "EndpointUnreachable"
-	AuthenticationError ConditionReason = "AuthenticationError"
-)
-
-type ConditionErrorMessage struct {
-	*testutil.APIErrorMessage
-}
-
-func (a ConditionErrorMessage) IsError() bool {
-	return a.APIErrorMessage != nil
-}
-
-func (a ConditionErrorMessage) ConditionReason() (ConditionReason, string) {
-	if a.HttpCode == http.StatusBadRequest || a.HttpCode == http.StatusNotFound {
-		return InputError, a.String()
-	} else if a.HttpCode == http.StatusUnauthorized || a.HttpCode == http.StatusForbidden {
-		return AuthenticationError, a.String()
-	} else if a.HttpCode == http.StatusBadGateway || a.HttpCode == http.StatusServiceUnavailable {
-		return EndpointUnreachable, a.String()
-	}
-	//e.g.:500
-	return BackendError, a.String()
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

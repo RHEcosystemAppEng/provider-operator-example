@@ -24,7 +24,7 @@ type FakeProviderService struct {
 }
 
 func (s *FakeProviderService) CreateCloudService(ctx context.Context, selector client.ObjectKey) (Service, error) {
-
+	s.retrieveClientCredential(ctx, selector)
 	return NewFakeAPIClient(), nil
 }
 

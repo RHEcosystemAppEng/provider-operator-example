@@ -123,8 +123,8 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&dbaascontrollers.ProviderConnectionReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		DBaaSProviderService: fakeService,
+		Scheme:               mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProviderConnection")
 		os.Exit(1)
