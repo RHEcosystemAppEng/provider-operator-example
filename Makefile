@@ -5,7 +5,7 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.0.1
 CONTAINER_ENGINE?=podman
-
+REGISTRY ?= quay.io/ecosystem-appeng
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -30,7 +30,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # redhat.com/provider-operator-example-bundle:$VERSION and redhat.com/provider-operator-example-catalog:$VERSION.
-IMAGE_TAG_BASE ?= quay.io/ahameed/provider-example-operator
+IMAGE_TAG_BASE ?= $(REGISTRY)/provider-operator-example
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)

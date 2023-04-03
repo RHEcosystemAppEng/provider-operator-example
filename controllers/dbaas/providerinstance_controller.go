@@ -121,13 +121,14 @@ func (r *ProviderInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		logger.Error(err, "Could not update Instance status")
 
 	}
+
+	instance.Status.Phase = dbaasv1beta1.InstancePhaseReady
 	logger.Info("updating  cluster details")
 	if err := r.Status().Update(ctx, &instance); err != nil {
 		if errors.IsConflict(err) {
 			logger.Info("Instance modified, retry reconciling")
 			return ctrl.Result{Requeue: true}, nil
 		}
-		instance.Status.Phase = dbaasv1beta1.InstancePhaseReady
 		statusErr := r.updateStatus(ctx, &instance, metav1.ConditionTrue, InstanceReady, err.Error())
 		if statusErr != nil {
 			logger.Error(statusErr, "Error in updating instance status")

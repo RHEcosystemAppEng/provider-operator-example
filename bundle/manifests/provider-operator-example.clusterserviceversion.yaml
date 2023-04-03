@@ -18,7 +18,19 @@ metadata:
           "metadata": {
             "name": "providerinstance-sample"
           },
-          "spec": null
+          "spec": {
+            "inventoryRef": {
+              "name": "test",
+              "namespace": "openshift-dbaas-operator"
+            },
+            "provisioningParameters": {
+              "cloudProvider": "AWS",
+              "name": "dbaas",
+              "plan": "SERVERLESS",
+              "regions": "us-east-2",
+              "spendLimit": "0"
+            }
+          }
         },
         {
           "apiVersion": "dbaas.redhat.com/v1beta1",
@@ -26,7 +38,13 @@ metadata:
           "metadata": {
             "name": "providerinventory-sample"
           },
-          "spec": null
+          "spec": {
+            "spec": {
+              "credentialsRef": {
+                "name": "dbaas-vendor-credentials"
+              }
+            }
+          }
         }
       ]
     capabilities: Basic Install
@@ -249,7 +267,7 @@ spec:
                       fieldPath: metadata.namespace
                 - name: SYNC_PERIOD_MIN
                   value: "180"
-                image: quay.io/ahameed/provider-example-operator:v0.0.1
+                image: quay.io/ecosystem-appeng/provider-operator-example:v0.0.1
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

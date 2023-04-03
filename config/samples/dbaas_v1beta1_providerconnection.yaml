@@ -3,4 +3,7 @@ kind: ProviderConnection
 metadata:
   name: providerconnection-sample
 spec:
-  # TODO(user): Add fields here
+  databaseServiceID: a-cluster-instance-id-dbaas
+  inventoryRef:
+    name: test
+    namespace: openshift-dbaas-operator
