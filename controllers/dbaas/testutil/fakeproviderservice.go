@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
+	"github.com/RHEcosystemAppEng/provider-operator-example/apis/dbaas/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +18,7 @@ type DBaaSProviderService interface {
 	client.Client
 	CreateCloudService(ctx context.Context, selector client.ObjectKey) (Service, error)
 	DiscoverClusters(ctx context.Context, cloudService Service) ([]dbaasv1beta1.DatabaseService, error)
+	CreateCluster(ctx context.Context, cloudService Service, instance *v1beta1.ProviderInstance) (*Cluster, error)
 }
 
 type FakeProviderService struct {
@@ -55,17 +57,54 @@ func (s *FakeProviderService) retrieveClientCredential(ctx context.Context, sele
 		return nil, err
 	}
 	cred := &credential{
-		APIKey: string(secret.Data["APIKey"]),
+		CredentialField1: string(secret.Data["CredentialField1"]),
+		CredentialField2: string(secret.Data["CredentialField2"]),
 	}
-	if cred.APIKey == "" {
-		return nil, errors.New("failed to retrieve API credential")
+	if cred.CredentialField1 == "" {
+		return nil, errors.New("failed to retrieve API credential1")
+	}
+	if cred.CredentialField2 == "" {
+		return nil, errors.New("failed to retrieve API credential2")
 	}
 
 	return cred, nil
 }
 
+func (s *FakeProviderService) CreateCluster(ctx context.Context, cloudService Service, instance *v1beta1.ProviderInstance) (*Cluster, error) {
+
+	cloudProvider := getClusterParameter(instance, dbaasv1beta1.ProvisioningCloudProvider)
+	if len(cloudProvider) == 0 {
+		cloudProvider = "AWS"
+	}
+	clusterName := getClusterParameter(instance, dbaasv1beta1.ProvisioningName)
+	if len(clusterName) == 0 {
+		err := fmt.Errorf("parameter %v is required", dbaasv1beta1.ProvisioningName)
+		return nil, err
+	}
+
+	clusterDetails := &CreateClusterRequest{
+		Name:     clusterName,
+		Provider: ApiCloudProvider(cloudProvider),
+	}
+
+	cluster, _, err := cloudService.CreateCluster(ctx, clusterDetails)
+
+	return cluster, err
+}
+
+func getClusterParameter(providerInstance *v1beta1.ProviderInstance, key dbaasv1beta1.ProvisioningParameterType) string {
+	if len(providerInstance.Spec.ProvisioningParameters) == 0 {
+		return ""
+	}
+	if value, ok := providerInstance.Spec.ProvisioningParameters[key]; ok {
+		return value
+	}
+	return ""
+}
+
 type Service interface {
 	ListClusters(ctx context.Context) (*ListClustersResponse, *http.Response, error)
+	CreateCluster(ctx context.Context, createClusterRequest *CreateClusterRequest) (*Cluster, *http.Response, error)
 }
 
 // Client manages communication with the provider Cloud API v2022-03-31.
@@ -105,4 +144,9 @@ func PopulateInstanceInfo(cluster *Cluster) map[string]string {
 	}
 
 	return data
+}
+
+type CreateClusterRequest struct {
+	Name     string           `json:"name"`
+	Provider ApiCloudProvider `json:"provider"`
 }

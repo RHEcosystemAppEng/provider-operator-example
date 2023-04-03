@@ -228,7 +228,6 @@ func buildProviderCR(clusterRoleList *rbac.ClusterRoleList) *dbaasv1beta1.DBaaSP
 // providerRegistrationCR CR for crunchy bridge registration
 func buildProviderSpec(regions, nodes dbaasv1beta1.ProvisioningParameter) dbaasv1beta1.DBaaSProviderSpec {
 
-	testCloudRegion := "us-west-2"
 	return dbaasv1beta1.DBaaSProviderSpec{
 		GroupVersion: "dbaas.redhat.com/v1beta1",
 		Provider: dbaasv1beta1.DatabaseProviderInfo{
@@ -245,11 +244,18 @@ func buildProviderSpec(regions, nodes dbaasv1beta1.ProvisioningParameter) dbaasv
 		InstanceKind:   "ProviderInstance",
 		CredentialFields: []dbaasv1beta1.CredentialField{
 			{
-				Key:         "APIKey",
-				DisplayName: "ProviderAPIKeyD",
+				Key:         "CredentialField1",
+				DisplayName: "Credential Field 1",
 				Type:        "maskedstring",
 				Required:    true,
-				HelpText:    "This is the API Key for the example provider to show on UI",
+				HelpText:    "This is the Credential Field 1 for the example provider to show on UI",
+			},
+			{
+				Key:         "CredentialField2",
+				DisplayName: "Credential Field 2",
+				Type:        "maskedstring",
+				Required:    true,
+				HelpText:    "This is the Credential Field 2 for the example provider to show on UI",
 			},
 		},
 		AllowsFreeTrial:              true,
@@ -339,10 +345,145 @@ func buildProviderSpec(regions, nodes dbaasv1beta1.ProvisioningParameter) dbaasv
 					}},
 			},
 			dbaasv1beta1.ProvisioningRegions: {
-				DisplayName: testCloudRegion,
+				DisplayName: "Regions",
+				ConditionalData: []dbaasv1beta1.ConditionalProvisioningParameterData{
+					{
+						Dependencies: []dbaasv1beta1.FieldDependency{
+							{
+								Field: dbaasv1beta1.ProvisioningPlan,
+								Value: dbaasv1beta1.ProvisioningPlanDedicated,
+							},
+							{
+								Field: dbaasv1beta1.ProvisioningCloudProvider,
+								Value: string("AWS"),
+							},
+						},
+						Options: []dbaasv1beta1.Option{
+							{
+								Value:        "us-east-2",
+								DisplayValue: "Ohio (us-east-2)",
+							},
+							{
+								Value:        "us-east-1",
+								DisplayValue: " N. Virginia (us-east-1)",
+							},
+							{
+								Value:        "us-west-2",
+								DisplayValue: "Oregon (us-west-2)",
+							},
+							{
+								Value:        "eu-west-1",
+								DisplayValue: "Ireland (eu-west-1)",
+							},
+						},
+						DefaultValue: "us-east-2",
+					},
+					{
+						Dependencies: []dbaasv1beta1.FieldDependency{
+							{
+								Field: dbaasv1beta1.ProvisioningPlan,
+								Value: dbaasv1beta1.ProvisioningPlanServerless,
+							},
+							{
+								Field: dbaasv1beta1.ProvisioningCloudProvider,
+								Value: string("AWS"),
+							},
+						},
+						Options: []dbaasv1beta1.Option{
+							{
+								Value:        "us-east-2",
+								DisplayValue: "Ohio (us-east-2)",
+							},
+							{
+								Value:        "us-east-1",
+								DisplayValue: " N. Virginia (us-east-1)",
+							},
+							{
+								Value:        "us-west-2",
+								DisplayValue: "Oregon (us-west-2)",
+							},
+							{
+								Value:        "eu-west-1",
+								DisplayValue: "Ireland (eu-west-1)",
+							},
+						},
+						DefaultValue: "us-east-2",
+					},
+					{
+						Dependencies: []dbaasv1beta1.FieldDependency{
+							{
+								Field: dbaasv1beta1.ProvisioningPlan,
+								Value: dbaasv1beta1.ProvisioningPlanDedicated,
+							},
+							{
+								Field: dbaasv1beta1.ProvisioningCloudProvider,
+								Value: string("GCP"),
+							},
+						},
+						Options: []dbaasv1beta1.Option{
+							{
+								Value:        "us-east4",
+								DisplayValue: "N. Virginia (us-east",
+							},
+							{
+								Value:        "us-east1",
+								DisplayValue: "South Carolina (us-east1)",
+							},
+						},
+						DefaultValue: "us-east1",
+					},
+					{
+						Dependencies: []dbaasv1beta1.FieldDependency{
+							{
+								Field: dbaasv1beta1.ProvisioningPlan,
+								Value: dbaasv1beta1.ProvisioningPlanServerless,
+							},
+							{
+								Field: dbaasv1beta1.ProvisioningCloudProvider,
+								Value: string("GCP"),
+							},
+						},
+						Options: []dbaasv1beta1.Option{
+							{
+								Value:        "us-east4",
+								DisplayValue: "N. Virginia (us-east",
+							},
+							{
+								Value:        "us-east1",
+								DisplayValue: "South Carolina (us-east1)",
+							},
+						},
+						DefaultValue: "us-east1",
+					},
+				},
 			},
 			dbaasv1beta1.ProvisioningNodes: {
-				DisplayName: "nodes",
+				DisplayName: "Nodes",
+				ConditionalData: []dbaasv1beta1.ConditionalProvisioningParameterData{
+					{
+						Dependencies: []dbaasv1beta1.FieldDependency{
+							{
+								Field: dbaasv1beta1.ProvisioningPlan,
+								Value: dbaasv1beta1.ProvisioningPlanDedicated,
+							},
+						},
+						Options: []dbaasv1beta1.Option{
+							{
+								Value:        "1",
+								DisplayValue: "1",
+							},
+							{
+								Value:        "3",
+								DisplayValue: "3",
+							},
+							{
+								Value:        "5",
+								DisplayValue: "5",
+							},
+						},
+						DefaultValue: "3",
+					},
+				},
 			},
 			dbaasv1beta1.ProvisioningMachineType: {
 				DisplayName: "Compute",

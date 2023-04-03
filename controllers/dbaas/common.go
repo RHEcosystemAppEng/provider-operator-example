@@ -17,7 +17,7 @@ const (
 
 	databaseType     = "providerdb"
 	databaseProvider = "provider Cloud"
-	databasehost     = "postgres://username:password@hostname:port/database_name"
+	databasehost     = "postgres://username:password@hostname:port/defaultdb"
 
 	databasePort    = "26257"
 	databaseName    = "defaultdb"

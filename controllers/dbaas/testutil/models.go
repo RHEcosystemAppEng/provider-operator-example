@@ -10,12 +10,8 @@ type SqlUser struct {
 }
 
 type credential struct {
-	APIKey string
-}
-
-type ClusterCertificate struct {
-	FileName      string
-	CaCertificate string
+	CredentialField1 string
+	CredentialField2 string
 }
 
 type APIErrorMessage struct {

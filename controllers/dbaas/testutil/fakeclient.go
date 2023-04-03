@@ -3,8 +3,10 @@ package testutil
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -163,6 +165,47 @@ func buildFakeResponse() *http.Response {
 	}
 	//r.Write(bytes.NewBuffer(nil))
 	return r
+}
+
+func (f FakeAPIClient) CreateCluster(ctx context.Context, createClusterRequest *CreateClusterRequest) (*Cluster, *http.Response, error) {
+	if strings.HasSuffix(createClusterRequest.Name, "invalid-cluster-creation-request") {
+		resp := &http.Response{
+			StatusCode: 400,
+			Body:       io.NopCloser(strings.NewReader("{\"code\": 0, \"message\": \"creation failed\"}")),
+		}
+		return nil, resp, fmt.Errorf("{\"code\": 0, \"message\": \"creation failed\"}")
+	}
+
+	f.clusterMutex.Lock()
+	clusters := f.clusters
+	f.clusterMutex.Unlock()
+
+	clusterID := "a-cluster-instance-id-" + createClusterRequest.Name
+	for _, cluster := range clusters.Clusters {
+		if cluster.Id == clusterID {
+			resp := &http.Response{
+				StatusCode: 409,
+				Body:       io.NopCloser(strings.NewReader("{\"code\": 6, \"message\": \"code = AlreadyExists\"}")),
+			}
+			return nil, resp, fmt.Errorf("{\"code\": 6, \"message\": \"code = AlreadyExists\"}")
+		}
+	}
+
+	cluster := Cluster{
+		Id:            clusterID,
+		Name:          createClusterRequest.Name,
+		CloudProvider: createClusterRequest.Provider,
+		Regions: []Region{
+			{
+				Name:   "region-2",
+				SqlDns: "free-tier5.cloud",
+			},
+		},
+		CreatedAt: &aDate,
+		UpdatedAt: &aDate,
+	}
+	f.addCluster <- cluster
+	return &cluster, buildFakeResponse(), nil
 }
 
 // Plan  - DEDICATED: A paid plan that offers dedicated hardware in any location.  - CUSTOM: A plan option that is used for clusters whose machine configs are not  supported in self-service. All INVOICE clusters are under this plan option.  - SERVERLESS: A paid plan that runs on shared hardware and caps the users' maximum monthly spending to a user-specified (possibly 0) amount.
