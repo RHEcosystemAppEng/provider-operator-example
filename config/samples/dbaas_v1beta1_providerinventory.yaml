@@ -1,0 +1,8 @@
+apiVersion: dbaas.redhat.com/v1beta1
+kind: ProviderInventory
+metadata:
+  name: providerinventory-sample
+spec:
+  spec:
+    credentialsRef:
+      name: dbaas-vendor-credentials

@@ -1,0 +1,9 @@
+apiVersion: dbaas.redhat.com/v1beta1
+kind: ProviderConnection
+metadata:
+  name: providerconnection-sample
+spec:
+  databaseServiceID: a-cluster-instance-id-dbaas
+  inventoryRef:
+    name: test
+    namespace: openshift-dbaas-operator
