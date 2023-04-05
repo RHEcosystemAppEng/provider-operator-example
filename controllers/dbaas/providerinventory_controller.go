@@ -25,9 +25,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 )
@@ -121,7 +124,21 @@ func (r *ProviderInventoryReconciler) updateInventoryStatus(ctx context.Context,
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProviderInventoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	instanceMapFn := handler.MapFunc(func(a client.Object) []ctrl.Request {
+		if instance, ok := a.(*v1beta1.ProviderInstance); ok {
+			return []ctrl.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      instance.Spec.InventoryRef.Name,
+					Namespace: instance.Spec.InventoryRef.Namespace,
+				},
+				}}
+		}
+		return nil
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1beta1.ProviderInventory{}).
+		Watches(&source.Kind{Type: &v1beta1.ProviderInstance{}}, handler.EnqueueRequestsFromMapFunc(instanceMapFn)).
 		Complete(r)
 }
