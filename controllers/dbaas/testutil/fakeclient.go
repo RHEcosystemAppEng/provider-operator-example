@@ -208,16 +208,21 @@ func (f FakeAPIClient) CreateCluster(ctx context.Context, createClusterRequest *
 	return &cluster, buildFakeResponse(), nil
 }
 
+func (f FakeAPIClient) GetCluster(ctx context.Context, clusterID string) (*Cluster, *http.Response, error) {
+	f.clusterMutex.Lock()
+	clusters := f.clusters
+	f.clusterMutex.Unlock()
+
+	for _, cluster := range clusters.Clusters {
+		if cluster.Id == clusterID {
+			return &cluster, buildFakeResponse(), nil
+		}
+	}
+	return nil, buildFakeResponse(), fmt.Errorf("could not find cluster")
+}
+
 // Plan  - DEDICATED: A paid plan that offers dedicated hardware in any location.  - CUSTOM: A plan option that is used for clusters whose machine configs are not  supported in self-service. All INVOICE clusters are under this plan option.  - SERVERLESS: A paid plan that runs on shared hardware and caps the users' maximum monthly spending to a user-specified (possibly 0) amount.
 type Plan string
-
-// List of Plan.
-const (
-	PLAN_PLAN_UNSPECIFIED Plan = "PLAN_UNSPECIFIED"
-	PLAN_DEDICATED        Plan = "DEDICATED"
-	PLAN_CUSTOM           Plan = "CUSTOM"
-	PLAN_SERVERLESS       Plan = "SERVERLESS"
-)
 
 // ApiCloudProvider  - GCP: The Google Cloud Platform cloud provider.  - AWS: The Amazon Web Services cloud provider.
 type ApiCloudProvider string
@@ -248,5 +253,3 @@ type Region struct {
 	NodeCount            int32 `json:"node_count"`
 	AdditionalProperties map[string]interface{}
 }
-
-type region Region
