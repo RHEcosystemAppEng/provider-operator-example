@@ -19,6 +19,7 @@ type DBaaSProviderService interface {
 	CreateCloudService(ctx context.Context, selector client.ObjectKey) (Service, error)
 	DiscoverClusters(ctx context.Context, cloudService Service) ([]dbaasv1beta1.DatabaseService, error)
 	CreateCluster(ctx context.Context, cloudService Service, instance *v1beta1.ProviderInstance) (*Cluster, error)
+	GetCluster(ctx context.Context, cloudService Service, clusterID string) (*Cluster, error)
 }
 
 type FakeProviderService struct {
@@ -102,9 +103,19 @@ func getClusterParameter(providerInstance *v1beta1.ProviderInstance, key dbaasv1
 	return ""
 }
 
+func (s *FakeProviderService) GetCluster(ctx context.Context, cloudService Service, clusterID string) (*Cluster, error) {
+
+	cluster, _, err := cloudService.GetCluster(ctx, clusterID)
+	if err != nil {
+		return nil, err
+	}
+	return cluster, nil
+}
+
 type Service interface {
 	ListClusters(ctx context.Context) (*ListClustersResponse, *http.Response, error)
 	CreateCluster(ctx context.Context, createClusterRequest *CreateClusterRequest) (*Cluster, *http.Response, error)
+	GetCluster(ctx context.Context, clusterID string) (*Cluster, *http.Response, error)
 }
 
 // Client manages communication with the provider Cloud API v2022-03-31.

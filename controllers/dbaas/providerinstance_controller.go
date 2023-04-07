@@ -56,6 +56,7 @@ func (r *ProviderInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	logger := log.FromContext(ctx, "ProviderInstance", req.NamespacedName)
 
 	var instance v1beta1.ProviderInstance
+	var cluster *testutil.Cluster
 
 	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		if errors.IsNotFound(err) {
@@ -100,17 +101,29 @@ func (r *ProviderInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	instance.Status.Phase = dbaasv1beta1.InstancePhaseCreating
-	logger.Info("Creating  cloud cluster")
-	cluster, err := r.CreateCluster(ctx, cloudService, &instance)
-	if err != nil {
-		statusErr := r.updateStatus(ctx, &instance, metav1.ConditionFalse, BackendError, err.Error())
-		if statusErr != nil {
-			logger.Error(statusErr, "Error in updating instance status")
-			return ctrl.Result{Requeue: true}, statusErr
+	if len(instance.Status.InstanceID) == 0 {
+		instance.Status.Phase = dbaasv1beta1.InstancePhaseCreating
+		logger.Info("Creating  cloud cluster")
+		cluster, err = r.CreateCluster(ctx, cloudService, &instance)
+		if err != nil {
+			statusErr := r.updateStatus(ctx, &instance, metav1.ConditionFalse, BackendError, err.Error())
+			if statusErr != nil {
+				logger.Error(statusErr, "Error in updating instance status")
+				return ctrl.Result{Requeue: true}, statusErr
+			}
+			logger.Error(err, "Failed to create a cluster at provider cloud")
+			return ctrl.Result{}, err
 		}
-		logger.Error(err, "Failed to create a cluster at provider cloud")
-		return ctrl.Result{}, err
+	} else {
+		if cluster, err = r.GetCluster(ctx, cloudService, instance.Status.InstanceID); err != nil {
+			statusErr := r.updateStatus(ctx, &instance, metav1.ConditionFalse, BackendError, err.Error())
+			if statusErr != nil {
+				logger.Error(statusErr, "Error in updating instance status")
+				return ctrl.Result{Requeue: true}, statusErr
+			}
+			logger.Error(err, "Failed to get a cluster at provider cloud")
+			return ctrl.Result{}, err
+		}
 	}
 	if err := r.updateClusterDetails(cluster, &instance.Status); err != nil {
 		statusErr := r.updateStatus(ctx, &instance, metav1.ConditionFalse, BackendError, err.Error())
