@@ -10,7 +10,13 @@ metadata:
           "metadata": {
             "name": "providerconnection-sample"
           },
-          "spec": null
+          "spec": {
+            "databaseServiceID": "a-cluster-instance-id-dbaas",
+            "inventoryRef": {
+              "name": "test",
+              "namespace": "openshift-dbaas-operator"
+            }
+          }
         },
         {
           "apiVersion": "dbaas.redhat.com/v1beta1",
